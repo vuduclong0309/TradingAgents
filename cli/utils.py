@@ -1,3 +1,4 @@
+import os
 import questionary
 from typing import List, Optional, Tuple, Dict
 
@@ -128,6 +129,7 @@ def select_shallow_thinking_agent(provider) -> str:
     # Define shallow thinking llm engine options with their corresponding model names
     SHALLOW_AGENT_OPTIONS = {
         "openai": [
+            ("GPT-5 - Flagship multimodal reasoning model", "gpt-5"),
             ("GPT-4o-mini - Fast and efficient for quick tasks", "gpt-4o-mini"),
             ("GPT-4.1-nano - Ultra-lightweight model for basic operations", "gpt-4.1-nano"),
             ("GPT-4.1-mini - Compact model with good performance", "gpt-4.1-mini"),
@@ -186,6 +188,7 @@ def select_deep_thinking_agent(provider) -> str:
     # Define deep thinking llm engine options with their corresponding model names
     DEEP_AGENT_OPTIONS = {
         "openai": [
+            ("GPT-5 - Flagship multimodal reasoning model", "gpt-5"),
             ("GPT-4.1-nano - Ultra-lightweight model for basic operations", "gpt-4.1-nano"),
             ("GPT-4.1-mini - Compact model with good performance", "gpt-4.1-mini"),
             ("GPT-4o - Standard model with solid capabilities", "gpt-4o"),
@@ -243,7 +246,7 @@ def select_llm_provider() -> tuple[str, str]:
     """Select the OpenAI api url using interactive selection."""
     # Define OpenAI api options with their corresponding endpoints
     BASE_URLS = [
-        ("OpenAI", "https://api.openai.com/v1"),
+        ("OpenAI", "http://127.0.0.1:8000/v1"),
         ("Anthropic", "https://api.anthropic.com/"),
         ("Google", "https://generativelanguage.googleapis.com/v1"),
         ("Openrouter", "https://openrouter.ai/api/v1"),
@@ -274,3 +277,5 @@ def select_llm_provider() -> tuple[str, str]:
     print(f"You selected: {display_name}\tURL: {url}")
     
     return display_name, url
+
+

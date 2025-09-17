@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
     "llm_provider": "openai",
     "deep_think_llm": "o4-mini",
     "quick_think_llm": "gpt-4o-mini",
-    "backend_url": "https://api.openai.com/v1",
+    "backend_url": os.getenv("OPENAI_BASE_URL", "http://127.0.0.1:8000/v1"),
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
@@ -20,3 +20,5 @@ DEFAULT_CONFIG = {
     # Tool settings
     "online_tools": True,
 }
+
+

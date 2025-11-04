@@ -1,0 +1,31 @@
+# TradingAgents Copilot Instructions
+- **Scope**: Multi-agent LangGraph pipeline for LLM-driven trading decisions anchored in `tradingagents/graph/trading_graph.py`.
+- **Execution Modes**: Use `python -m cli.main` for the interactive Rich CLI or run `main.py` for a scripted demo; both rely on the same `TradingAgentsGraph` orchestration.
+- **Graph Layout**: `GraphSetup.setup_graph` wires analysts → researchers → trader → risk desk; conditional routing lives in `tradingagents/graph/conditional_logic.py` and depends on `max_debate_rounds` and `max_risk_discuss_rounds`.
+- **Streaming Expectations**: `TradingAgentsGraph(debug=True)` enables `.graph.stream(...)` traces consumed by the CLI; non-debug runs call `.graph.invoke(...)` and only return the final state.
+- **State Shape**: The LangGraph state is the `AgentState` TypedDict defined in `tradingagents/agents/utils/agent_states.py`; respect required keys (`messages`, report fields, debate states) when injecting data.
+- **Initial State Helper**: Use `Propagator.create_initial_state` and `Propagator.get_graph_args` (`tradingagents/graph/propagation.py`) instead of crafting dicts manually; recursion limits come from `max_recur_limit`.
+- **Agent Nodes**: Analyst/researcher/trader factories live under `tradingagents/agents/**`; they expect LangChain `ChatOpenAI`-compatible clients and the shared `Toolkit` instance.
+- **Message Reset**: After each analyst, `create_msg_delete` (`tradingagents/agents/utils/agent_utils.py`) clears history and inserts a dummy `HumanMessage` to keep Anthropic-compatible transcripts—do not strip this behavior.
+- **Toolkit Tools**: `Toolkit` exposes both online and offline data tools; each wrapper calls into `tradingagents/dataflows/interface.py` and is registered with `@tool` for LangGraph ToolNodes.
+- **Online vs Offline Data**: Toggle `config["online_tools"]`; offline paths read from `config["data_dir"]`, which defaults to a developer-specific absolute path—override it before relying on cached CSVs.
+- **Market Data Bounds**: Offline Yahoo Finance caches only cover `2015-01-01` through `2025-03-25`; `get_YFin_data` throws if queries exceed that window.
+- **API Keys**: Set `FINNHUB_API_KEY` and `OPENAI_API_KEY` in the environment; OpenRouter/Ollama/Anthropic/Google runs still reuse the OpenAI client in `Toolkit` for tool calls, so ensure proxies expose compatible endpoints.
+- **Backend Selection**: `DEFAULT_CONFIG` (`tradingagents/default_config.py`) drives model names and `backend_url`; supported `llm_provider` values include `openai`, `ollama`, `openrouter`, `anthropic`, `google`.
+- **Config Overrides**: Copy `DEFAULT_CONFIG`, mutate it, and pass into `TradingAgentsGraph`; `set_config` (`tradingagents/dataflows/config.py`) syncs the runtime singleton used by dataflows.
+- **Results Directories**: Graph runs emit JSON state logs under `eval_results/<ticker>/TradingAgentsStrategy_logs/`; the CLI also writes per-run markdown reports to `<results_dir>/<ticker>/<date>/reports/`.
+- **Memory Layer**: `FinancialSituationMemory` (`tradingagents/agents/utils/memory.py`) stores experiences in an in-memory Chroma DB and embeds via OpenAI; reset behavior is per-process, so plan persistence accordingly.
+- **CLI Customizations**: The Typer prompts in `cli/main.py` let users choose analysts, providers, and thinking depth (`research_depth` maps to debate rounds); update the selections instead of editing graph code when adding options.
+- **Rich UI Contract**: `MessageBuffer` expects chunk dictionaries with keys like `market_report`, `investment_debate_state`, and `risk_debate_state`; maintain these outputs if modifying node responses.
+- **Tool Logging**: The CLI decorators around `MessageBuffer` append tool invocations to `results_dir/.../message_tool.log`; follow the same pattern if introducing new message sinks.
+- **Signal Processing**: Final decisions should remain machine-readable summaries processed by `SignalProcessor.process_signal` (`tradingagents/graph/signal_processing.py`) before presenting to users.
+- **Reflection Hook**: After trades settle, call `TradingAgentsGraph.reflect_and_remember(returns_losses)` to update all memories; the method fans out to each agent-specific reflector in `tradingagents/graph/reflection.py`.
+- **Testing Gap**: No automated tests ship with the repo; validate changes via `python -m cli.main` walkthroughs or targeted `TradingAgentsGraph.propagate(...)` calls.
+- **Dependency Pinning**: `pyproject.toml` and `requirements.txt` both exist—align updates across files to avoid drift.
+- **Large Assets**: `tradingagents/dataflows/data_cache` is auto-created; never commit private datasets—expect callers to mount them externally.
+- **Error Hotspots**: Missing dataset files or unset API keys manifest as silent empty strings returned from dataflow helpers; guard downstream logic accordingly when adding features.
+- **Cost Controls**: Default models (`o4-mini`, `gpt-4o-mini`) balance cost and reasoning; document any heavier defaults in `DEFAULT_CONFIG` so downstream tools are aware.
+- **Future Extensibility**: To add an agent, supply a factory in `tradingagents/agents/...`, register it in `GraphSetup.setup_graph`, and extend `ConditionalLogic` plus `AgentState` as needed.
+- **Experiments Shortcut**: For quick iterative runs, instantiate `TradingAgentsGraph(debug=True, selected_analysts=[...])` inside notebooks and stream the LangGraph generator to observe intermediate messages.
+- **Dataflow Concurrency**: Heavy data pulls rely on `ThreadPoolExecutor` in `interface.py`; preserve thread-safety when mutating shared globals like `DATA_DIR`.
+- **Version Awareness**: The code targets LangGraph’s current API (use `.stream`/`.invoke` with `stream_mode="values"`); align upgrades with documentation to avoid message format regressions.
